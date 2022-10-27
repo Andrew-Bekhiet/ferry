@@ -1,10 +1,9 @@
-import 'package:test/test.dart';
 import 'package:ferry_cache/ferry_cache.dart';
-
-import 'package:ferry_test_graphql/queries/__generated__/reviews.req.gql.dart';
-import 'package:ferry_test_graphql/queries/__generated__/reviews.data.gql.dart';
-import 'package:ferry_test_graphql/fragments/__generated__/review_fragment.req.gql.dart';
 import 'package:ferry_test_graphql/fragments/__generated__/review_fragment.data.gql.dart';
+import 'package:ferry_test_graphql/fragments/__generated__/review_fragment.req.gql.dart';
+import 'package:ferry_test_graphql/queries/__generated__/reviews.data.gql.dart';
+import 'package:ferry_test_graphql/queries/__generated__/reviews.req.gql.dart';
+import 'package:test/test.dart';
 
 final reviewsReq = GReviewsReq();
 
@@ -26,22 +25,25 @@ final reviewFragmentData = GReviewFragmentData.fromJson(review.toJson());
 
 void main() {
   group('sync operations', () {
-    test('can read and write queries', () {
+    test('can read and write queries', () async {
       final cache = Cache();
-      cache.writeQuery(reviewsReq, reviewsData);
-      expect(cache.readQuery(reviewsReq), equals(reviewsData));
+      await cache.writeQuery(reviewsReq, reviewsData);
+      await expectLater(
+          cache.readQuery(reviewsReq), completion(equals(reviewsData)));
     });
 
-    test('can read fragments written by queries', () {
+    test('can read fragments written by queries', () async {
       final cache = Cache();
-      cache.writeQuery(reviewsReq, reviewsData);
-      expect(cache.readFragment(reviewFragmentReq), equals(reviewFragmentData));
+      await cache.writeQuery(reviewsReq, reviewsData);
+      await expectLater(cache.readFragment(reviewFragmentReq),
+          completion(equals(reviewFragmentData)));
     });
 
-    test('can read and write fragments', () {
+    test('can read and write fragments', () async {
       final cache = Cache();
-      cache.writeFragment(reviewFragmentReq, reviewFragmentData);
-      expect(cache.readFragment(reviewFragmentReq), equals(reviewFragmentData));
+      await cache.writeFragment(reviewFragmentReq, reviewFragmentData);
+      await expectLater(cache.readFragment(reviewFragmentReq),
+          completion(equals(reviewFragmentData)));
     });
 
     test('dataIdFromObject overrides cache.identify', () {
@@ -49,28 +51,29 @@ void main() {
       expect(cache.identify(reviewFragmentData), equals('OVERRIDE'));
     });
 
-    test('can read and write with a data id override', () {
+    test('can read and write with a data id override', () async {
       final cache = Cache(dataIdFromObject: (object) => 'OVERRIDE');
-      cache.writeFragment(reviewFragmentReq, reviewFragmentData);
+      await cache.writeFragment(reviewFragmentReq, reviewFragmentData);
 
       reviewFragmentReq.idFields['id'] = 'OVERRIDE';
 
-      expect(cache.readFragment(reviewFragmentReq), equals(reviewFragmentData));
+      await expectLater(cache.readFragment(reviewFragmentReq),
+          completion(equals(reviewFragmentData)));
     });
 
-    test('can clear cache', () {
+    test('can clear cache', () async {
       final cache = Cache();
 
-      cache.writeQuery(reviewsReq, reviewsData);
-      expect(
+      await cache.writeQuery(reviewsReq, reviewsData);
+      await expectLater(
         cache.readQuery(reviewsReq),
-        equals(reviewsData),
+        completion(equals(reviewsData)),
       );
 
       cache.clear();
-      expect(
+      await expectLater(
         cache.readQuery(reviewsReq),
-        equals(null),
+        completion(equals(null)),
       );
     });
   });

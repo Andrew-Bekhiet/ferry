@@ -1,7 +1,8 @@
 import 'dart:async';
-import 'package:rxdart/rxdart.dart';
-import 'package:ferry_exec/ferry_exec.dart';
+
 import 'package:ferry_cache/ferry_cache.dart';
+import 'package:ferry_exec/ferry_exec.dart';
+import 'package:rxdart/rxdart.dart';
 
 export 'package:ferry_cache/ferry_cache.dart';
 
@@ -21,7 +22,7 @@ class CacheProxy {
   ])  : _cache = cache,
         _optimisticRequest = optimisticRequest;
 
-  TData? readQuery<TData, TVars>(
+  Future<TData?> readQuery<TData, TVars>(
     OperationRequest<TData, TVars> request, {
     bool? optimistic,
   }) =>
@@ -30,7 +31,7 @@ class CacheProxy {
         optimistic: optimistic ?? _optimistic,
       );
 
-  TData? readFragment<TData, TVars>(
+  Future<TData?> readFragment<TData, TVars>(
     FragmentRequest<TData, TVars> request, {
     bool? optimistic,
   }) =>
@@ -39,7 +40,7 @@ class CacheProxy {
         optimistic: optimistic ?? _optimistic,
       );
 
-  void writeQuery<TData, TVars>(
+  Future<void> writeQuery<TData, TVars>(
     OperationRequest<TData, TVars> request,
     TData data,
   ) =>
@@ -49,7 +50,7 @@ class CacheProxy {
         optimisticRequest: _optimisticRequest,
       );
 
-  void writeFragment<TData, TVars>(
+  Future<void> writeFragment<TData, TVars>(
     FragmentRequest<TData, TVars> request,
     TData data,
   ) =>
@@ -77,7 +78,7 @@ class CacheProxy {
 
   void release(String entityId) => _cache.release(entityId);
 
-  Set<String> gc() => _cache.gc();
+  Future<Set<String>> gc() => _cache.gc();
 
   void clear() => _cache.clear();
 }

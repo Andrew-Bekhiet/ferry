@@ -1,11 +1,10 @@
-import 'package:test/test.dart';
 import 'package:gql/language.dart';
-
 import 'package:normalize/normalize.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('FieldPolicy.read', () {
-    test('can use custom read function on root field', () {
+    test('can use custom read function on root field', () async {
       final query = parseString('''
         query TestQuery {
           posts {
@@ -43,29 +42,30 @@ void main() {
         ]
       };
 
-      expect(
-          denormalizeOperation(
-            addTypename: true,
-            document: query,
-            read: (dataId) => normalized[dataId],
-            typePolicies: {
-              'Query': TypePolicy(
-                queryType: true,
-                fields: {
-                  'posts': FieldPolicy(
-                    read: (existing, options) => options
-                        .readField<List>(options.field, existing ?? [])!
-                        .where((post) => post['id'] == '123')
-                        .toList(),
-                  )
-                },
-              ),
-            },
-          ),
-          equals(result));
+      await expectLater(
+        denormalizeOperation(
+          addTypename: true,
+          document: query,
+          read: (dataId) async => normalized[dataId],
+          typePolicies: {
+            'Query': TypePolicy(
+              queryType: true,
+              fields: {
+                'posts': FieldPolicy(
+                  read: (existing, options) async => (await options
+                          .readField<List>(options.field, existing ?? []))!
+                      .where((post) => post['id'] == '123')
+                      .toList(),
+                )
+              },
+            ),
+          },
+        ),
+        completion(equals(result)),
+      );
     });
 
-    test('can use custom read function on child field', () {
+    test('can use custom read function on child field', () async {
       final query = parseString('''
         query TestQuery {
           posts {
@@ -100,22 +100,23 @@ void main() {
         ]
       };
 
-      expect(
-          denormalizeOperation(
-            addTypename: true,
-            document: query,
-            read: (dataId) => normalized[dataId],
-            typePolicies: {
-              'Post': TypePolicy(
-                fields: {
-                  'title': FieldPolicy(
-                    read: (existing, options) => existing.toUpperCase(),
-                  )
-                },
-              ),
-            },
-          ),
-          equals(result));
+      await expectLater(
+        denormalizeOperation(
+          addTypename: true,
+          document: query,
+          read: (dataId) async => normalized[dataId],
+          typePolicies: {
+            'Post': TypePolicy(
+              fields: {
+                'title': FieldPolicy(
+                  read: (existing, options) => existing.toUpperCase(),
+                )
+              },
+            ),
+          },
+        ),
+        completion(equals(result)),
+      );
     });
   });
 }

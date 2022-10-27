@@ -41,17 +41,17 @@ final heroData = GHeroWithFragmentsData((b) => b..hero = han.toBuilder());
 void main() {
   late Cache cache;
 
-  setUp(() {
-    cache = Cache()
-      ..writeQuery(heroReq, heroData)
-      ..writeQuery(
-        GHeroWithFragmentsReq((b) => b..vars.episode = GEpisode.NEWHOPE),
-        GHeroWithFragmentsData((b) => b..hero = luke.toBuilder()),
-      )
-      ..writeQuery(
-        GHeroWithFragmentsReq((b) => b..vars.episode = GEpisode.JEDI),
-        GHeroWithFragmentsData((b) => b..hero = vader.toBuilder()),
-      );
+  setUp(() async {
+    cache = Cache();
+    await cache.writeQuery(heroReq, heroData);
+    await cache.writeQuery(
+      GHeroWithFragmentsReq((b) => b..vars.episode = GEpisode.NEWHOPE),
+      GHeroWithFragmentsData((b) => b..hero = luke.toBuilder()),
+    );
+    await cache.writeQuery(
+      GHeroWithFragmentsReq((b) => b..vars.episode = GEpisode.JEDI),
+      GHeroWithFragmentsData((b) => b..hero = vader.toBuilder()),
+    );
   });
 
   group('operationDataChangeStream', () {
@@ -95,7 +95,7 @@ void main() {
         expect(stream, emitsInOrder([emitsDone]));
 
         await Future.delayed(Duration.zero);
-        cache.writeQuery(
+        await cache.writeQuery(
           heroReq.rebuild((b) => b..vars.episode = GEpisode.JEDI),
           GHeroWithFragmentsData((b) => b..hero = luke.toBuilder()),
         );
@@ -120,7 +120,7 @@ void main() {
         expect(stream, emitsInOrder([emitsDone]));
 
         await Future.delayed(Duration.zero);
-        cache.writeQuery(heroReq, heroData);
+        await cache.writeQuery(heroReq, heroData);
 
         await Future.delayed(Duration.zero);
         await cache.dispose();
@@ -142,7 +142,7 @@ void main() {
         expect(stream, emitsInOrder([emitsDone]));
 
         await Future.delayed(Duration.zero);
-        cache.writeFragment(
+        await cache.writeFragment(
           GheroDataReq((b) => b..idFields = {'id': 'vader'}),
           vader.rebuild((b) => b..name = 'Anakin'),
         );
@@ -173,7 +173,7 @@ void main() {
         );
 
         await Future.delayed(Duration.zero);
-        cache.writeQuery(
+        await cache.writeQuery(
           heroReq,
           GHeroWithFragmentsData((b) => b..hero = luke.toBuilder()),
         );
@@ -362,7 +362,7 @@ void main() {
         expect(stream, emitsInOrder([emitsDone]));
 
         await Future.delayed(Duration.zero);
-        cache.writeFragment(lukeFragment, luke);
+        await cache.writeFragment(lukeFragment, luke);
 
         await Future.delayed(Duration.zero);
         await cache.dispose();
@@ -389,7 +389,7 @@ void main() {
         );
 
         await Future.delayed(Duration.zero);
-        cache.writeFragment(
+        await cache.writeFragment(
           lukeFragment,
           luke.rebuild((b) => b..name = 'Luca'),
         );
@@ -455,7 +455,7 @@ void main() {
         );
 
         await Future.delayed(Duration.zero);
-        cache.writeFragment(
+        await cache.writeFragment(
             lukeAndFriends,
             luke.rebuild((data) => data.friendsConnection.edges
                     .add(GHeroWithFragmentsData_hero_friendsConnection_edges(
@@ -467,7 +467,8 @@ void main() {
                 ))));
 
         await Future.delayed(Duration.zero);
-        cache.writeFragment(GheroDataReq((b) => b..idFields = {'id': 'vader'}),
+        await cache.writeFragment(
+            GheroDataReq((b) => b..idFields = {'id': 'vader'}),
             vader.rebuild((data) => data.name = 'Daddy <3'));
 
         await Future.delayed(Duration.zero);

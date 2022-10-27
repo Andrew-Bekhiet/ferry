@@ -1,7 +1,8 @@
 import 'dart:async';
-import 'package:rxdart/rxdart.dart';
+
 import 'package:collection/collection.dart';
 import 'package:ferry_store/ferry_store.dart';
+import 'package:rxdart/rxdart.dart';
 
 class MemoryStore extends Store {
   final BehaviorSubject<Map<String, Map<String, dynamic>?>> _valueStream;

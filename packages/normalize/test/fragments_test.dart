@@ -1,11 +1,10 @@
-import 'package:test/test.dart';
 import 'package:gql/language.dart';
-
 import 'package:normalize/normalize.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('Normalizing and denormalizing fragments', () {
-    test('Simple fragment', () {
+    test('Simple fragment', () async {
       final fragment = parseString('''
         fragment user on Author {
           id
@@ -18,19 +17,19 @@ void main() {
         'Author:1': {'id': '1', '__typename': 'Author', 'name': 'Paul'},
       };
 
-      expect(
+      await expectLater(
         denormalizeFragment(
           document: fragment,
           idFields: {'id': '1'},
-          read: (dataId) => normalizedMap[dataId],
+          read: (dataId) async => normalizedMap[dataId],
         ),
-        equals(data),
+        completion(equals(data)),
       );
 
       final normalizedResult = {};
-      normalizeFragment(
-        read: (dataId) => normalizedResult[dataId],
-        write: (dataId, value) => normalizedResult[dataId] = value,
+      await normalizeFragment(
+        read: (dataId) async => normalizedResult[dataId],
+        write: (dataId, value) async => normalizedResult[dataId] = value,
         document: fragment,
         idFields: {'id': '1'},
         data: data,
@@ -41,7 +40,7 @@ void main() {
       );
     });
 
-    test('Nested entities', () {
+    test('Nested entities', () async {
       final fragment = parseString('''
         fragment commentData on Comment {
           id
@@ -67,19 +66,19 @@ void main() {
         'Author:2': {'id': '2', '__typename': 'Author', 'name': 'Nicole'}
       };
 
-      expect(
+      await expectLater(
         denormalizeFragment(
           document: fragment,
           idFields: {'id': '324'},
-          read: (dataId) => normalizedMap[dataId],
+          read: (dataId) async => normalizedMap[dataId],
         ),
-        equals(data),
+        completion(equals(data)),
       );
 
       final normalizedResult = {};
-      normalizeFragment(
-        read: (dataId) => normalizedResult[dataId],
-        write: (dataId, value) => normalizedResult[dataId] = value,
+      await normalizeFragment(
+        read: (dataId) async => normalizedResult[dataId],
+        write: (dataId, value) async => normalizedResult[dataId] = value,
         document: fragment,
         idFields: {'id': '324'},
         data: data,
@@ -91,7 +90,7 @@ void main() {
       );
     });
 
-    test('Nested entities with addTypename', () {
+    test('Nested entities with addTypename', () async {
       final fragment = parseString('''
         fragment commentData on Comment {
           id
@@ -117,20 +116,20 @@ void main() {
         'Author:2': {'id': '2', '__typename': 'Author', 'name': 'Nicole'}
       };
 
-      expect(
+      await expectLater(
         denormalizeFragment(
           document: fragment,
           idFields: {'id': '324'},
-          read: (dataId) => normalizedMap[dataId],
+          read: (dataId) async => normalizedMap[dataId],
           addTypename: true,
         ),
-        equals(data),
+        completion(equals(data)),
       );
 
       final normalizedResult = {};
-      normalizeFragment(
-        read: (dataId) => normalizedResult[dataId],
-        write: (dataId, value) => normalizedResult[dataId] = value,
+      await normalizeFragment(
+        read: (dataId) async => normalizedResult[dataId],
+        write: (dataId, value) async => normalizedResult[dataId] = value,
         document: fragment,
         idFields: {'id': '324'},
         data: data,
@@ -142,7 +141,7 @@ void main() {
       );
     });
 
-    test('Multiple named fragment definitions', () {
+    test('Multiple named fragment definitions', () async {
       final fragment = parseString('''
         fragment user on Author {
           id
@@ -172,20 +171,20 @@ void main() {
         },
         'Author:2': {'id': '2', '__typename': 'Author', 'name': 'Nicole'}
       };
-      expect(
+      await expectLater(
         denormalizeFragment(
           document: fragment,
           fragmentName: 'commentData',
           idFields: {'id': '324'},
-          read: (dataId) => normalizedMap[dataId],
+          read: (dataId) async => normalizedMap[dataId],
         ),
-        equals(data),
+        completion(equals(data)),
       );
 
       final normalizedResult = {};
-      normalizeFragment(
-        read: (dataId) => normalizedResult[dataId],
-        write: (dataId, value) => normalizedResult[dataId] = value,
+      await normalizeFragment(
+        read: (dataId) async => normalizedResult[dataId],
+        write: (dataId, value) async => normalizedResult[dataId] = value,
         document: fragment,
         fragmentName: 'commentData',
         idFields: {'id': '324'},
@@ -198,7 +197,7 @@ void main() {
       );
     });
 
-    test('Override __typename on denormalize', () {
+    test('Override __typename on denormalize', () async {
       final fragment = parseString('''
         fragment user on Author {
           id
@@ -211,13 +210,13 @@ void main() {
         'NotAuthor:1': {'id': '1', '__typename': 'Author', 'name': 'Paul'},
       };
 
-      expect(
+      await expectLater(
         denormalizeFragment(
           document: fragment,
           idFields: {'id': '1', '__typename': 'NotAuthor'},
-          read: (dataId) => normalizedMap[dataId],
+          read: (dataId) async => normalizedMap[dataId],
         ),
-        equals(data),
+        completion(equals(data)),
       );
     });
   });

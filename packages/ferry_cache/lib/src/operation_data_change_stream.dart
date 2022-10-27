@@ -34,13 +34,15 @@ Stream<Set<String>> operationDataChangeStream<TData, TVars>(
 
   final dataIdStreamController = StreamController<void>();
   final result = dataIdStreamController.stream
-      .map((_) {
+      .asyncMap((_) async {
         final dataIds = <String>{};
 
-        denormalizeOperation(
-          read: (dataId) {
+        await denormalizeOperation(
+          read: (dataId) async {
             dataIds.add(dataId);
-            return optimistic ? optimisticReader(dataId) : store.get(dataId);
+            return optimistic
+                ? optimisticReader(dataId)
+                : await store.get(dataId);
           },
           document: request.operation.document,
           operationName: request.operation.operationName,

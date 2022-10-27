@@ -74,7 +74,7 @@ class Cache {
           dataIdFromObject,
           possibleTypes,
         ),
-        getData: () => readQuery(request, optimistic: optimistic),
+        getData: () async => readQuery(request, optimistic: optimistic),
       );
 
   /// Watches for changes to data in the Cache for the given fragment.
@@ -94,12 +94,12 @@ class Cache {
           dataIdFromObject,
           possibleTypes,
         ),
-        getData: () => readFragment(request, optimistic: optimistic),
+        getData: () async => readFragment(request, optimistic: optimistic),
       );
 
   Stream<TData?> _watch<TData>({
     required Stream<Set<String>> Function() getChangeStream,
-    required TData? Function() getData,
+    required Future<TData?> Function() getData,
   }) {
     return getChangeStream()
         // ensure every action only emits one update even if
@@ -109,16 +109,18 @@ class Cache {
         // We add an empty set at the beginning of the stream to trigger the initial getData().
         // getChangeStream = operationDataChangeStream or fragmentDataChangeStream and
         // they both end with .skip(1).
-        .startWith(const {}).map((_) => getData());
+        .startWith(const {}).asyncMap((_) => getData());
   }
 
   /// Reads denormalized data from the Cache for the given operation.
-  TData? readQuery<TData, TVars>(
+  Future<TData?> readQuery<TData, TVars>(
     OperationRequest<TData, TVars> request, {
     bool optimistic = true,
-  }) {
-    final json = denormalizeOperation(
-      read: optimistic ? optimisticReader : (dataId) => store.get(dataId),
+  }) async {
+    final json = await denormalizeOperation(
+      read: optimistic
+          ? (dataId) async => optimisticReader(dataId)
+          : (dataId) async => store.get(dataId),
       document: request.operation.document,
       addTypename: addTypename,
       operationName: request.operation.operationName,
@@ -132,12 +134,14 @@ class Cache {
   }
 
   /// Reads denormalized data from the Cache for the given fragment.
-  TData? readFragment<TData, TVars>(
+  Future<TData?> readFragment<TData, TVars>(
     FragmentRequest<TData, TVars> request, {
     bool optimistic = true,
-  }) {
-    final json = denormalizeFragment(
-      read: optimistic ? optimisticReader : (dataId) => store.get(dataId),
+  }) async {
+    final json = await denormalizeFragment(
+      read: optimistic
+          ? (dataId) async => optimisticReader(dataId)
+          : (dataId) async => store.get(dataId),
       document: request.document,
       idFields: request.idFields,
       fragmentName: request.fragmentName,
@@ -156,16 +160,16 @@ class Cache {
   /// If an [optimisticRequest] is provided, the changes will be written as an
   /// optimistic patch and will be reverted once a non-optimistic response is
   /// received for the [optimisticRequest].
-  void writeQuery<TData, TVars>(
+  Future<void> writeQuery<TData, TVars>(
     OperationRequest<TData, TVars> request,
     TData data, {
     OperationRequest? optimisticRequest,
-  }) {
-    normalizeOperation(
+  }) async {
+    await normalizeOperation(
       read: optimisticRequest != null
-          ? optimisticReader
-          : (dataId) => store.get(dataId),
-      write: (dataId, value) => _writeData(
+          ? (dataId) async => optimisticReader(dataId)
+          : (dataId) async => store.get(dataId),
+      write: (dataId, value) async => _writeData(
         dataId,
         value,
         optimisticRequest,
@@ -188,16 +192,16 @@ class Cache {
   /// If an [optimisticRequest] is provided, the changes will be written as an
   /// optimistic patch and will be reverted once a non-optimistic response is
   /// received for the [optimisticRequest].
-  void writeFragment<TData, TVars>(
+  Future<void> writeFragment<TData, TVars>(
     FragmentRequest<TData, TVars> request,
     TData data, {
     OperationRequest? optimisticRequest,
-  }) {
-    normalizeFragment(
+  }) async {
+    await normalizeFragment(
       read: optimisticRequest != null
-          ? optimisticReader
-          : (dataId) => store.get(dataId),
-      write: (dataId, value) => _writeData(
+          ? (dataId) async => optimisticReader(dataId)
+          : (dataId) async => store.get(dataId),
+      write: (dataId, value) async => _writeData(
         dataId,
         value,
         optimisticRequest,
@@ -263,12 +267,12 @@ class Cache {
   /// If an [optimisticRequest] is provided, the changes will be written as an
   /// optimistic patch and will be reverted once a non-optimistic response is
   /// received for the [optimisticRequest].
-  void evict(
+  Future<void> evict(
     String entityId, {
     String? fieldName,
     Map<String, dynamic> args = const {},
     OperationRequest? optimisticRequest,
-  }) =>
+  }) async =>
       fieldName == null
           ? _evictEntity(
               entityId,
@@ -307,12 +311,12 @@ class Cache {
     }
   }
 
-  void _evictField(
+  Future<void> _evictField(
     String entityId,
     String fieldName,
     Map<String, dynamic> args,
     OperationRequest? optimisticRequest,
-  ) {
+  ) async {
     if (optimisticRequest != null) {
       /// Set field to `null` in optimistic patch
       optimisticPatchesStream.add({
@@ -344,9 +348,9 @@ class Cache {
         ),
       );
 
-      final entity = store.get(entityId);
+      final entity = await store.get(entityId);
       if (entity != null) {
-        store.put(
+        await store.put(
           entityId,
           entity.map(
             // NOTE: we need to set to null rather than removing altogether
@@ -383,9 +387,9 @@ class Cache {
   void release(String entityId) => _retainedEntityIds.remove(entityId);
 
   /// Removes all entities that cannot be reached from one of the root operations.
-  Set<String> gc() {
-    final reachable = utils.reachableIds(
-      (dataId) => store.get(dataId),
+  Future<Set<String>> gc() async {
+    final reachable = await utils.reachableIds(
+      (dataId) async => store.get(dataId),
       typePolicies,
     );
     final keysToRemove = store.keys
@@ -394,7 +398,7 @@ class Cache {
               !reachable.contains(key) && !_retainedEntityIds.contains(key),
         )
         .toSet();
-    store.deleteAll(keysToRemove);
+    await store.deleteAll(keysToRemove);
     return keysToRemove;
   }
 

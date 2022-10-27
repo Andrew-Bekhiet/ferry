@@ -125,14 +125,14 @@ void main() {
 
       await stream.first;
 
-      final result =
-          await client.readQuery(GHumanWithArgsReq((b) => b..vars.id = '1'));
-
-      expect(
-          result,
+      await expectLater(
+        client.readQuery(GHumanWithArgsReq((b) => b..vars.id = '1')),
+        completion(
           isA<GHumanWithArgsData>()
               .having((p) => p.human.id, 'id', '1')
-              .having((p) => p.human.name, 'name', 'Luke'));
+              .having((p) => p.human.name, 'name', 'Luke'),
+        ),
+      );
 
       await Future.delayed(Duration.zero);
     });

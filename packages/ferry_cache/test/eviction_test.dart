@@ -1,10 +1,8 @@
-import 'package:test/test.dart';
-import 'package:normalize/src/utils/field_key.dart';
-
+import 'package:ferry_cache/ferry_cache.dart';
 import 'package:ferry_test_graphql/queries/__generated__/human_with_args.data.gql.dart';
 import 'package:ferry_test_graphql/queries/__generated__/human_with_args.req.gql.dart';
-
-import 'package:ferry_cache/ferry_cache.dart';
+import 'package:normalize/src/utils/field_key.dart';
+import 'package:test/test.dart';
 
 void main() {
   final chewieReq = GHumanWithArgsReq((b) => b..vars.id = 'chewie');
@@ -40,85 +38,97 @@ void main() {
       ]),
   );
   group('Evicting entities', () {
-    test('can evict entities', () {
+    test('can evict entities', () async {
       final cache = Cache();
-      cache.writeQuery(hanReq, hanData);
-      cache.writeQuery(chewieReq, chewieData);
-      expect(cache.readQuery(hanReq), equals(hanData));
+      await cache.writeQuery(hanReq, hanData);
+      await cache.writeQuery(chewieReq, chewieData);
+      await expectLater(cache.readQuery(hanReq), completion(equals(hanData)));
       final entityId = cache.identify(hanData.human)!;
-      cache.evict(entityId);
-      expect(cache.readQuery(hanReq), equals(null));
+      await cache.evict(entityId);
+      await expectLater(cache.readQuery(hanReq), completion(equals(null)));
       expect(cache.store.get(entityId), equals(null));
-      expect(cache.readQuery(chewieReq), equals(chewieData));
+      await expectLater(
+          cache.readQuery(chewieReq), completion(equals(chewieData)));
     });
 
-    test('can evict entities optimistically', () {
+    test('can evict entities optimistically', () async {
       final cache = Cache();
-      cache.writeQuery(hanReq, hanData);
-      expect(cache.readQuery(hanReq), equals(hanData));
+      await cache.writeQuery(hanReq, hanData);
+      await expectLater(cache.readQuery(hanReq), completion(equals(hanData)));
       final entityId = cache.identify(hanData.human)!;
-      cache.evict(
+      await cache.evict(
         entityId,
         optimisticRequest: hanReq,
       );
-      expect(cache.readQuery(hanReq, optimistic: true), equals(null));
-      expect(cache.readQuery(hanReq, optimistic: false), equals(hanData));
+      await expectLater(
+          cache.readQuery(hanReq, optimistic: true), completion(equals(null)));
+      await expectLater(cache.readQuery(hanReq, optimistic: false),
+          completion(equals(hanData)));
       expect(cache.store.get(entityId), isNotNull);
     });
 
-    test('can filter out dangling references', () {
+    test('can filter out dangling references', () async {
       final cache = Cache();
-      cache.writeQuery(hanReq, hanData);
+      await cache.writeQuery(hanReq, hanData);
       expect(
-        cache.readQuery(hanReq)!.human.friendsConnection.friends!.length,
+        (await cache.readQuery(hanReq))!
+            .human
+            .friendsConnection
+            .friends!
+            .length,
         equals(2),
       );
-      cache.evict(cache.identify(chewieData.human)!);
+      await cache.evict(cache.identify(chewieData.human)!);
       expect(
-        cache.readQuery(hanReq)!.human.friendsConnection.friends!.length,
+        (await cache.readQuery(hanReq))!
+            .human
+            .friendsConnection
+            .friends!
+            .length,
         equals(1),
       );
     });
   });
 
   group('Evicting fields', () {
-    test('can evict fields', () {
+    test('can evict fields', () async {
       final cache = Cache();
-      cache.writeQuery(hanReq, hanData);
+      await cache.writeQuery(hanReq, hanData);
       final entityId = cache.identify(hanData.human)!;
-      cache.evict(entityId, fieldName: 'height');
+      await cache.evict(entityId, fieldName: 'height');
       final result = cache.readQuery(hanReq);
-      expect(result, equals(hanData.rebuild((b) => b..human.height = null)));
+      expect(result,
+          completion(equals(hanData.rebuild((b) => b..human.height = null))));
     });
 
-    test('can evict fields optimistically', () {
+    test('can evict fields optimistically', () async {
       final cache = Cache();
-      cache.writeQuery(hanReq, hanData);
+      await cache.writeQuery(hanReq, hanData);
       final entityId = cache.identify(hanData.human)!;
-      cache.evict(
+      await cache.evict(
         entityId,
         fieldName: 'height',
         optimisticRequest: hanReq,
       );
       final optimisticResult = cache.readQuery(hanReq, optimistic: true);
-      expect(
+      await expectLater(
         optimisticResult,
-        equals(hanData.rebuild((b) => b..human.height = null)),
+        completion(equals(hanData.rebuild((b) => b..human.height = null))),
       );
       final nonOptimisticResult = cache.readQuery(hanReq, optimistic: false);
-      expect(
+      await expectLater(
         nonOptimisticResult,
-        equals(hanData),
+        completion(equals(hanData)),
       );
     });
 
-    test('can evict only fields that include specific args', () {
+    test('can evict only fields that include specific args', () async {
       final cache = Cache();
-      cache.writeQuery(
+      await cache.writeQuery(
         hanReq.rebuild((b) => b..vars.friendsAfter = 'luke'),
         hanData,
       );
-      cache.writeQuery(
+      await cache.writeQuery(
         hanReq.rebuild((b) => b..vars.friendsAfter = 'chewie'),
         hanData,
       );
@@ -127,47 +137,49 @@ void main() {
           FieldKey.from('friendsConnection', {'first': 10, 'after': 'luke'});
       final keyChewie =
           FieldKey.from('friendsConnection', {'first': 10, 'after': 'chewie'});
-      expect(cache.store.get(entityId)![keyLuke.toString()], isNotNull);
-      expect(cache.store.get(entityId)![keyChewie.toString()], isNotNull);
-      cache.evict(entityId,
+      expect((await cache.store.get(entityId))![keyLuke.toString()], isNotNull);
+      expect(
+          (await cache.store.get(entityId))![keyChewie.toString()], isNotNull);
+      await cache.evict(entityId,
           fieldName: 'friendsConnection', args: {'after': 'luke'});
-      expect(cache.store.get(entityId)![keyLuke.toString()], isNull);
-      expect(cache.store.get(entityId)![keyChewie.toString()], isNotNull);
+      expect((await cache.store.get(entityId))![keyLuke.toString()], isNull);
+      expect(
+          (await cache.store.get(entityId))![keyChewie.toString()], isNotNull);
     });
   });
 
   group('Garbage collection', () {
-    test('can remove orphaned entities', () {
+    test('can remove orphaned entities', () async {
       final cache = Cache();
-      cache.writeQuery(hanReq, hanData);
-      cache.writeQuery(
+      await cache.writeQuery(hanReq, hanData);
+      await cache.writeQuery(
         hanReq,
         hanData.rebuild((b) => b..human.friendsConnection.friends.removeLast()),
       );
       expect(cache.store.get('Human:luke'), isNotNull);
       expect(cache.store.get('Human:chewie'), isNotNull);
-      cache.gc();
+      await cache.gc();
       expect(cache.store.get('Human:luke'), isNotNull);
       expect(cache.store.get('Human:chewie'), isNull);
     });
 
-    test('can retain and release entities', () {
+    test('can retain and release entities', () async {
       final cache = Cache();
-      cache.writeQuery(hanReq, hanData);
-      cache.writeQuery(
+      await cache.writeQuery(hanReq, hanData);
+      await cache.writeQuery(
         hanReq,
         hanData.rebuild((b) => b..human.friendsConnection.friends.removeLast()),
       );
-      expect(cache.store.get('Human:luke'), isNotNull);
-      expect(cache.store.get('Human:chewie'), isNotNull);
+      expect(await cache.store.get('Human:luke'), isNotNull);
+      expect(await cache.store.get('Human:chewie'), isNotNull);
       cache.retain('Human:chewie');
-      cache.gc();
-      expect(cache.store.get('Human:luke'), isNotNull);
-      expect(cache.store.get('Human:chewie'), isNotNull);
+      await cache.gc();
+      expect(await cache.store.get('Human:luke'), isNotNull);
+      expect(await cache.store.get('Human:chewie'), isNotNull);
       cache.release('Human:chewie');
-      cache.gc();
-      expect(cache.store.get('Human:luke'), isNotNull);
-      expect(cache.store.get('Human:chewie'), isNull);
+      await cache.gc();
+      expect(await cache.store.get('Human:luke'), isNotNull);
+      expect(await cache.store.get('Human:chewie'), isNull);
     });
   });
 }

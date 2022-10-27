@@ -4,7 +4,8 @@ import 'package:normalize/src/utils/reachable_ids.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('Test that no stack overflow occurs for a circular reference ', () {
+  test('Test that no stack overflow occurs for a circular reference ',
+      () async {
     final queryMap = jsonDecode('''{
               "__typename":"Query",
               "trainer({'id':'ckhi5hgou5038xppf9phzteph'})":{
@@ -24,7 +25,7 @@ void main() {
              "trainer":{"\$ref":"Trainer:ckhi5hgou5038xppf9phzteph"}
           }''');
 
-    reachableIds((dataId) {
+    await reachableIds((dataId) async {
       if (dataId == 'Query') return queryMap;
       if (dataId == 'Trainer:ckhi5hgou5038xppf9phzteph') return trainerMap;
       if (dataId == 'Pokemon:ckhie3ik16650xnpfyvjmb1lq') return pokemonMap;

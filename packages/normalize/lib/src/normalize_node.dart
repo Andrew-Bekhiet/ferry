@@ -1,36 +1,43 @@
 import 'package:gql/ast.dart';
-
-import 'package:normalize/src/utils/resolve_data_id.dart';
-import 'package:normalize/src/utils/field_key.dart';
-import 'package:normalize/src/utils/expand_fragments.dart';
-import 'package:normalize/src/utils/exceptions.dart';
-import 'package:normalize/src/utils/deep_merge.dart';
 import 'package:normalize/src/config/normalization_config.dart';
 import 'package:normalize/src/policies/field_policy.dart';
+import 'package:normalize/src/utils/deep_merge.dart';
+import 'package:normalize/src/utils/exceptions.dart';
+import 'package:normalize/src/utils/expand_fragments.dart';
+import 'package:normalize/src/utils/field_key.dart';
+import 'package:normalize/src/utils/resolve_data_id.dart';
 
 /// Returns a normalized object for a given [SelectionSetNode].
 ///
 /// This is called recursively as the AST is traversed.
-Object? normalizeNode({
+Future<Object?> normalizeNode({
   required SelectionSetNode? selectionSet,
   required Object? dataForNode,
   required Object? existingNormalizedData,
   required NormalizationConfig config,
-  required void Function(String dataId, Map<String, dynamic> value) write,
+  required Future<void> Function(String dataId, Map<String, dynamic> value)
+      write,
   bool root = false,
-}) {
+}) async {
   if (dataForNode == null) return null;
 
   if (dataForNode is List) {
-    return dataForNode
-        .map((data) => normalizeNode(
-              selectionSet: selectionSet,
-              dataForNode: data,
-              existingNormalizedData: null,
-              config: config,
-              write: write,
-            ))
-        .toList();
+    final rslt = [];
+
+    await Future.forEach(
+      dataForNode,
+      (data) async => rslt.add(
+        await normalizeNode(
+          selectionSet: selectionSet,
+          dataForNode: data,
+          existingNormalizedData: null,
+          config: config,
+          write: write,
+        ),
+      ),
+    );
+
+    return rslt;
   }
 
   // If this is a leaf node, return the data
@@ -43,7 +50,7 @@ Object? normalizeNode({
       dataIdFromObject: config.dataIdFromObject,
     );
 
-    if (dataId != null) existingNormalizedData = config.read(dataId);
+    if (dataId != null) existingNormalizedData = await config.read(dataId);
 
     final typename = dataForNode['__typename'];
     final typePolicy = config.typePolicies[typename];
@@ -55,7 +62,7 @@ Object? normalizeNode({
       possibleTypes: config.possibleTypes,
     );
 
-    final dataToMerge = <String, dynamic>{
+    final dataToMergeFutures = <String, dynamic>{
       if (config.addTypename && typename != null) '__typename': typename,
       ...subNodes.fold({}, (data, field) {
         final fieldPolicy = (typePolicy?.fields ?? const {})[field.name.value];
@@ -87,32 +94,49 @@ Object? normalizeNode({
         }
 
         try {
-          final fieldData = normalizeNode(
-            selectionSet: field.selectionSet,
-            dataForNode: dataForNode[inputKey],
-            existingNormalizedData: existingFieldData,
-            config: config,
-            write: write,
-          );
-          if (policyCanMerge) {
-            return data
-              ..[fieldName] = fieldPolicy!.merge!(
-                existingFieldData,
-                fieldData,
-                FieldFunctionOptions(
-                  field: field,
+          return data
+            ..[fieldName] = Future(
+              () async {
+                final fieldData = await normalizeNode(
+                  selectionSet: field.selectionSet,
+                  dataForNode: dataForNode[inputKey],
+                  existingNormalizedData: existingFieldData,
                   config: config,
-                ),
-              );
-          }
-          return data..[fieldName] = fieldData;
+                  write: write,
+                );
+                if (policyCanMerge) {
+                  return await fieldPolicy!.merge!(
+                    existingFieldData,
+                    fieldData,
+                    FieldFunctionOptions(
+                      field: field,
+                      config: config,
+                    ),
+                  );
+                }
+                return fieldData;
+              },
+            ).onError<PartialDataException>(
+              (e, _) => throw PartialDataException(
+                path: [inputKey, ...e.path],
+              ),
+            );
         } on PartialDataException catch (e) {
           throw PartialDataException(path: [inputKey, ...e.path]);
         }
       })
     };
 
-    if (dataId != null) existingNormalizedData = config.read(dataId);
+    final dataToMerge = <String, dynamic>{};
+
+    // Reconstruct the data again in the same order
+    // after awaiting all pending futures in order
+    await Future.forEach(
+      dataToMergeFutures.entries,
+      (e) async => dataToMerge[e.key] = await e.value,
+    );
+
+    if (dataId != null) existingNormalizedData = await config.read(dataId);
 
     final mergedData = deepMerge(
       Map.from(existingNormalizedData as Map<dynamic, dynamic>? ?? {}),
@@ -120,7 +144,7 @@ Object? normalizeNode({
     );
 
     if (!root && dataId != null) {
-      write(dataId, mergedData);
+      await write(dataId, mergedData);
       return {config.referenceKey: dataId};
     } else {
       return mergedData;

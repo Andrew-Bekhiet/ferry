@@ -1,12 +1,12 @@
-import 'package:test/test.dart';
 import 'package:gql/language.dart';
-
 import 'package:normalize/normalize.dart';
+import 'package:test/test.dart';
+
 import '../shared_data.dart';
 
 void main() {
   group('Multiple Operations', () {
-    test('With operationName', () {
+    test('With operationName', () async {
       final query = parseString('''
         query FirstQuery {
           author {
@@ -32,21 +32,21 @@ void main() {
         }
       ''');
 
-      expect(
+      await expectLater(
         denormalizeOperation(
           document: query,
-          read: (dataId) => sharedNormalizedMap[dataId],
+          read: (dataId) async => sharedNormalizedMap[dataId],
           operationName: 'TestQuery',
           addTypename: true,
         ),
-        equals(sharedResponse),
+        completion(equals(sharedResponse)),
       );
 
       final normalizedResult = {};
-      normalizeOperation(
-        read: (dataId) => normalizedResult[dataId],
+      await normalizeOperation(
+        read: (dataId) async => normalizedResult[dataId],
         addTypename: true,
-        write: (dataId, value) => normalizedResult[dataId] = value,
+        write: (dataId, value) async => normalizedResult[dataId] = value,
         document: query,
         data: sharedResponse,
         operationName: 'TestQuery',
@@ -58,7 +58,7 @@ void main() {
       );
     });
 
-    test('Without operationName', () {
+    test('Without operationName', () async {
       final query = parseString('''
         query TestQuery {
           posts {
@@ -84,20 +84,20 @@ void main() {
           }
         }
       ''');
-      expect(
+      await expectLater(
         denormalizeOperation(
           document: query,
-          read: (dataId) => sharedNormalizedMap[dataId],
+          read: (dataId) async => sharedNormalizedMap[dataId],
           addTypename: true,
         ),
-        equals(sharedResponse),
+        completion(equals(sharedResponse)),
       );
 
       final normalizedResult = {};
-      normalizeOperation(
-        read: (dataId) => normalizedResult[dataId],
+      await normalizeOperation(
+        read: (dataId) async => normalizedResult[dataId],
         addTypename: true,
-        write: (dataId, value) => normalizedResult[dataId] = value,
+        write: (dataId, value) async => normalizedResult[dataId] = value,
         document: query,
         data: sharedResponse,
         operationName: 'TestQuery',

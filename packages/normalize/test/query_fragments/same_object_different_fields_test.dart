@@ -1,7 +1,7 @@
-import 'package:test/test.dart';
 import 'package:gql/language.dart';
-
 import 'package:normalize/normalize.dart';
+import 'package:test/test.dart';
+
 import '../shared_data.dart';
 
 void main() {
@@ -45,13 +45,13 @@ void main() {
       }
     ''');
 
-    test('Produces correct nested data object', () {
-      expect(
+    test('Produces correct nested data object', () async {
+      await expectLater(
         denormalizeOperation(
           document: query,
-          read: (dataId) => sharedNormalizedMap[dataId],
+          read: (dataId) async => sharedNormalizedMap[dataId],
         ),
-        equals(sharedResponse),
+        completion(equals(sharedResponse)),
       );
     });
   });

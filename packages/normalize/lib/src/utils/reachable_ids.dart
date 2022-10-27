@@ -4,65 +4,68 @@ import 'package:normalize/src/utils/resolve_root_typename.dart';
 import 'constants.dart';
 
 /// Returns a set of dataIds that can be reached by any root query.
-Set<String> reachableIds(
-  Map<String, dynamic>? Function(String dataId) read, [
+Future<Set<String>> reachableIds(
+  Future<Map<String, dynamic>?> Function(String dataId) read, [
   Map<String, TypePolicy> typePolicies = const {},
   String referenceKey = kDefaultReferenceKey,
-]) =>
-    defaultRootTypenames.keys
-        .map(
+]) async =>
+    (await Future.wait(defaultRootTypenames.keys
+            .map(
       (type) => typenameForOperationType(
         type,
         typePolicies,
       ),
     )
-        .fold(
+            .fold<Set<Future<Set<String>>>>(
       {},
       (ids, rootTypename) => ids
-        ..add(rootTypename)
-        ..addAll(
-          _idsInObject(
-            read(rootTypename),
-            read,
-            referenceKey,
-            {},
+        ..add(Future.value({rootTypename}))
+        ..add(
+          Future(
+            () async => _idsInObject(
+              await read(rootTypename),
+              read,
+              referenceKey,
+              {},
+            ),
           ),
         ),
-    );
+    )))
+        .reduce((p, n) => {...p, ...n});
 
 /// Returns a set of all IDs reachable from the given data ID.
 ///
 /// Includes the given [dataId] itself.
-Set<String> reachableIdsFromDataId(
+Future<Set<String>> reachableIdsFromDataId(
   String dataId,
-  Map<String, dynamic>? Function(String dataId) read, [
+  Future<Map<String, dynamic>?> Function(String dataId) read, [
   String referenceKey = kDefaultReferenceKey,
-]) =>
-    _idsInObject(read(dataId), read, referenceKey, {})..add(dataId);
+]) async =>
+    (await _idsInObject(read(dataId), read, referenceKey, {}))..add(dataId);
 
 /// Recursively finds reachable IDs in [object]
-Set<String> _idsInObject(
+Future<Set<String>> _idsInObject(
   Object? object,
-  Map<String, dynamic>? Function(String dataId) read,
+  Future<Map<String, dynamic>?> Function(String dataId) read,
   String referenceKey,
   Set<String> visited,
-) {
+) async {
   if (object is Map) {
     if (object.containsKey(referenceKey)) {
       if (visited.contains(object[referenceKey])) return {};
       return {object[referenceKey]}..addAll(
-          _idsInObject(
-            read(object[referenceKey]),
+          await _idsInObject(
+            await read(object[referenceKey]),
             read,
             referenceKey,
             visited..add(object[referenceKey]),
           ),
         );
     }
-    return object.values.fold(
+    return (await Future.wait(object.values.fold<Set<Future<Set<String>>>>(
       {},
       (ids, element) => ids
-        ..addAll(
+        ..add(
           _idsInObject(
             element,
             read,
@@ -70,12 +73,13 @@ Set<String> _idsInObject(
             visited,
           ),
         ),
-    );
+    )))
+        .reduce((p, n) => {...p, ...n});
   } else if (object is List) {
-    return object.fold(
+    return (await Future.wait(object.fold<Set<Future<Set<String>>>>(
       {},
       (ids, element) => ids
-        ..addAll(
+        ..add(
           _idsInObject(
             element,
             read,
@@ -83,7 +87,8 @@ Set<String> _idsInObject(
             visited,
           ),
         ),
-    );
+    )))
+        .reduce((p, n) => {...p, ...n});
   }
   return {};
 }

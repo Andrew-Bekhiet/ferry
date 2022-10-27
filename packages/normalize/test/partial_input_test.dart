@@ -1,8 +1,7 @@
-import 'package:test/test.dart';
 import 'package:gql/language.dart';
-
 import 'package:normalize/normalize.dart';
 import 'package:normalize/utils.dart';
+import 'package:test/test.dart';
 
 Map<String, dynamic> get fullQueryData => {
       '__typename': 'Query',
@@ -46,12 +45,12 @@ final query = parseString('''
 
 void main() {
   group('normalizeOperation acceptPartialData behavior', () {
-    test('Accepts partial data by default', () {
+    test('Accepts partial data by default', () async {
       final normalizedResult = {};
 
-      normalizeOperation(
-        read: (dataId) => normalizedResult[dataId],
-        write: (dataId, value) => normalizedResult[dataId] = value,
+      await normalizeOperation(
+        read: (dataId) async => normalizedResult[dataId],
+        write: (dataId, value) async => normalizedResult[dataId] = value,
         document: query,
         data: partialQueryData,
       );
@@ -66,9 +65,9 @@ void main() {
       final normalizedResult = {};
 
       expect(
-        () => normalizeOperation(
-          read: (dataId) => normalizedResult[dataId],
-          write: (dataId, value) => normalizedResult[dataId] = value,
+        () async => normalizeOperation(
+          read: (dataId) async => normalizedResult[dataId],
+          write: (dataId, value) async => normalizedResult[dataId] = value,
           acceptPartialData: false,
           document: query,
           data: partialQueryData,
@@ -81,12 +80,12 @@ void main() {
       );
     });
 
-    test('Accepts explicit null when acceptPartialData=false', () {
+    test('Accepts explicit null when acceptPartialData=false', () async {
       final normalizedResult = {};
 
-      normalizeOperation(
-        read: (dataId) => normalizedResult[dataId],
-        write: (dataId, value) => normalizedResult[dataId] = value,
+      await normalizeOperation(
+        read: (dataId) async => normalizedResult[dataId],
+        write: (dataId, value) async => normalizedResult[dataId] = value,
         acceptPartialData: false,
         document: query,
         data: fullQueryData,
@@ -100,14 +99,14 @@ void main() {
   });
 
   group('validateOperationDataStructure', () {
-    test('rejects partial data', () {
-      expect(
+    test('rejects partial data', () async {
+      await expectLater(
         validateOperationDataStructure(
           handleException: true,
           document: query,
           data: partialQueryData,
         ),
-        equals(false),
+        completion(equals(false)),
       );
 
       expect(
@@ -115,32 +114,36 @@ void main() {
           document: query,
           data: partialQueryData,
         ),
-        throwsA(isA<PartialDataException>().having(
-          (e) => e.path,
-          'An accurate path',
-          ['posts', 'title'],
-        )),
+        throwsA(
+          isA<PartialDataException>().having(
+            (e) => e.path,
+            'An accurate path',
+            ['posts', 'title'],
+          ),
+        ),
       );
     });
 
-    test('accepts valid data', () {
-      expect(
+    test('accepts valid data', () async {
+      await expectLater(
         validateOperationDataStructure(
           document: query,
           data: fullQueryData,
         ),
-        equals(true),
+        completion(equals(true)),
       );
     });
 
-    test('rejects null data', () {
-      expect(
+    test('rejects null data', () async {
+      await expectLater(
         () => validateOperationDataStructure(data: null, document: query),
-        throwsA(isA<PartialDataException>().having(
-          (e) => e.path,
-          'An empty path',
-          [],
-        )),
+        throwsA(
+          isA<PartialDataException>().having(
+            (e) => e.path,
+            'An empty path',
+            [],
+          ),
+        ),
       );
     });
   });
@@ -153,22 +156,22 @@ void main() {
       }
     ''');
 
-    test('rejects partial data', () {
+    test('rejects partial data', () async {
       final partialFragmentData = {
         'id': '123',
         '__typename': 'Post',
       };
 
-      expect(
+      await expectLater(
         validateFragmentDataStructure(
           data: partialFragmentData,
           document: fragment,
           handleException: true,
         ),
-        equals(false),
+        completion(equals(false)),
       );
 
-      expect(
+      await expectLater(
         () => validateFragmentDataStructure(
           data: partialFragmentData,
           document: fragment,
@@ -181,23 +184,23 @@ void main() {
       );
     });
 
-    test('accepts valid data', () {
+    test('accepts valid data', () async {
       final fullFragmentData = {
         'id': '123',
         '__typename': 'Post',
         'title': null,
       };
 
-      expect(
+      await expectLater(
         validateFragmentDataStructure(
           data: fullFragmentData,
           document: fragment,
         ),
-        equals(true),
+        completion(equals(true)),
       );
     });
-    test('rejects null data', () {
-      expect(
+    test('rejects null data', () async {
+      await expectLater(
         () => validateFragmentDataStructure(data: null, document: fragment),
         throwsA(isA<PartialDataException>().having(
           (e) => e.path,

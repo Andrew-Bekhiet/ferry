@@ -1,7 +1,6 @@
-import 'package:test/test.dart';
 import 'package:gql/language.dart';
-
 import 'package:normalize/normalize.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('Existing data different variables', () {
@@ -29,19 +28,19 @@ void main() {
       }
     ''');
 
-    test('With no data', () {
+    test('With no data', () async {
       final normalizedMap = {};
-      expect(
+      await expectLater(
         denormalizeOperation(
           document: query,
-          read: (dataId) => normalizedMap[dataId],
+          read: (dataId) async => normalizedMap[dataId],
           variables: {'a': false},
         ),
-        equals(null),
+        completion(equals(null)),
       );
     });
 
-    test('With data that uses different variables', () {
+    test('With data that uses different variables', () async {
       final normalizedMap = {
         'Query': {
           'posts({"b":true})': [
@@ -66,26 +65,26 @@ void main() {
         'Author:2': {'id': '2', '__typename': 'Author', 'name': 'Nicole'}
       };
 
-      expect(
+      await expectLater(
         denormalizeOperation(
             document: query,
-            read: (dataId) => normalizedMap[dataId],
+            read: (dataId) async => normalizedMap[dataId],
             variables: {'a': false}),
-        equals(null),
+        completion(equals(null)),
       );
     });
 
-    test('Explicit null', () {
+    test('Explicit null', () async {
       final normalizedMap = {
         'Query': {'posts({"b":false})': null},
       };
 
-      expect(
+      await expectLater(
         denormalizeOperation(
             document: query,
-            read: (dataId) => normalizedMap[dataId],
+            read: (dataId) async => normalizedMap[dataId],
             variables: {'a': false}),
-        equals({'posts': null}),
+        completion(equals({'posts': null})),
       );
     });
   });
@@ -114,7 +113,7 @@ void main() {
       }
     ''');
 
-    test('With data that uses different nested variables', () {
+    test('With data that uses different nested variables', () async {
       final normalizedMap = {
         'Query': {
           'posts': [
@@ -150,18 +149,18 @@ void main() {
         ]
       };
 
-      expect(
+      await expectLater(
         denormalizeOperation(
           document: query,
-          read: (dataId) => normalizedMap[dataId],
+          read: (dataId) async => normalizedMap[dataId],
           returnPartialData: true,
           variables: {'a': false},
         ),
-        equals(response),
+        completion(equals(response)),
       );
     });
 
-    test('Explicit null', () {
+    test('Explicit null', () async {
       final normalizedMap = {
         'Query': {
           'posts': [
@@ -199,13 +198,13 @@ void main() {
         ]
       };
 
-      expect(
+      await expectLater(
         denormalizeOperation(
           document: query,
-          read: (dataId) => normalizedMap[dataId],
+          read: (dataId) async => normalizedMap[dataId],
           variables: {'a': false},
         ),
-        equals(response),
+        completion(equals(response)),
       );
     });
   });

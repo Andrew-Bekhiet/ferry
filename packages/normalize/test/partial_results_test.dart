@@ -1,10 +1,9 @@
-import 'package:test/test.dart';
 import 'package:gql/language.dart';
-
 import 'package:normalize/normalize.dart';
+import 'package:test/test.dart';
 
 void main() {
-  test('Return partial data', () {
+  test('Return partial data', () async {
     final data = {
       'Query': {
         'posts': [
@@ -33,18 +32,18 @@ void main() {
         }
       ]
     };
-    expect(
+    await expectLater(
       denormalizeOperation(
         document: query,
-        read: (dataId) => data[dataId],
+        read: (dataId) async => data[dataId],
         addTypename: true,
         returnPartialData: true,
       ),
-      equals(response),
+      completion(equals(response)),
     );
   });
 
-  test("Don't return partial data", () {
+  test("Don't return partial data", () async {
     final data = {
       'Query': {
         'posts': [
@@ -65,18 +64,18 @@ void main() {
         }
       }
     ''');
-    expect(
+    await expectLater(
       denormalizeOperation(
         document: query,
-        read: (dataId) => data[dataId],
+        read: (dataId) async => data[dataId],
         addTypename: true,
         returnPartialData: false,
       ),
-      equals(null),
+      completion(equals(null)),
     );
   });
 
-  test('Explicit null', () {
+  test('Explicit null', () async {
     final data = {
       'Query': {
         '__typename': 'Query',
@@ -108,14 +107,14 @@ void main() {
         }
       ]
     };
-    expect(
+    await expectLater(
       denormalizeOperation(
         document: query,
-        read: (dataId) => data[dataId],
+        read: (dataId) async => data[dataId],
         addTypename: true,
         returnPartialData: false,
       ),
-      equals(response),
+      completion(equals(response)),
     );
   });
 }

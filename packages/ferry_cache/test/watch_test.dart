@@ -39,10 +39,10 @@ void main() {
       cache.dispose();
     });
 
-    test('can return data with', () {
+    test('can return data with', () async {
       final cache = Cache();
 
-      cache.writeQuery(reviewsReq, reviewsData);
+      await cache.writeQuery(reviewsReq, reviewsData);
 
       expect(
         cache.watchQuery(reviewsReq),
@@ -52,12 +52,12 @@ void main() {
         ]),
       );
 
-      cache.dispose();
+      await cache.dispose();
     });
 
     test('can receive updates to data', () async {
       final cache = Cache();
-      cache.writeQuery(reviewsReq, reviewsData);
+      await cache.writeQuery(reviewsReq, reviewsData);
 
       final nextData = reviewsData
           .rebuild((b) => b.reviews.add(review.rebuild((b) => b..id = '456')));
@@ -72,7 +72,7 @@ void main() {
       );
       await Future.delayed(Duration.zero);
 
-      cache.writeQuery(reviewsReq, nextData);
+      await cache.writeQuery(reviewsReq, nextData);
 
       await Future.delayed(Duration.zero);
 
@@ -97,11 +97,11 @@ void main() {
 
       await Future.delayed(Duration.zero);
 
-      cache.writeQuery(reviewsReq, reviewsData);
+      await cache.writeQuery(reviewsReq, reviewsData);
 
       await Future.delayed(Duration.zero);
 
-      cache.writeQuery(reviewsReq, nextData);
+      await cache.writeQuery(reviewsReq, nextData);
 
       await Future.delayed(Duration.zero);
 
@@ -111,11 +111,11 @@ void main() {
     test('can resume watch after reading corrupt data from cache', () async {
       final cache = Cache();
 
-      cache.writeQuery(reviewsReq, reviewsData);
+      await cache.writeQuery(reviewsReq, reviewsData);
 
       final dataId = cache.identify(reviewsData.reviews!.first)!;
 
-      final data = cache.store.get(dataId);
+      final data = await cache.store.get(dataId);
 
       //corrupt the data -> write String where an int should be
       data!['stars'] = '100';
@@ -135,11 +135,11 @@ void main() {
 
       await Future.delayed(Duration.zero);
 
-      cache.writeQuery(reviewsReq, reviewsData);
+      await cache.writeQuery(reviewsReq, reviewsData);
 
       await Future.delayed(Duration.zero);
 
-      cache.writeQuery(reviewsReq, nextData);
+      await cache.writeQuery(reviewsReq, nextData);
 
       await Future.delayed(Duration.zero);
 
@@ -149,7 +149,7 @@ void main() {
     test('can receive updates when child objects are updated by other queries',
         () async {
       final cache = Cache();
-      cache.writeQuery(reviewsReq, reviewsData);
+      await cache.writeQuery(reviewsReq, reviewsData);
 
       final updatedReview =
           reviewsData2.reviews![1].rebuild((b) => b.commentary = 'first');
@@ -164,9 +164,9 @@ void main() {
           ]));
 
       await Future.delayed(Duration.zero);
-      cache.writeQuery(reviewsReq, reviewsData2);
+      await cache.writeQuery(reviewsReq, reviewsData2);
       await Future.delayed(Duration.zero);
-      cache.writeQuery(
+      await cache.writeQuery(
           GReviewsByIDReq((b) => b..vars.id = reviewsData2.reviews![1].id),
           GReviewsByIDData((b) => b.review
             ..id = updatedReview.id
@@ -183,7 +183,7 @@ void main() {
     test('mutating data of multiple data ids at once emits only one update',
         () async {
       final cache = Cache();
-      cache.writeQuery(reviewsReq, reviewsData2);
+      await cache.writeQuery(reviewsReq, reviewsData2);
 
       expect(
         cache.watchQuery(reviewsReq).toList(),
@@ -191,9 +191,9 @@ void main() {
       );
 
       await Future.delayed(Duration.zero);
-      cache.writeQuery(reviewsReq, reviewsData2);
+      await cache.writeQuery(reviewsReq, reviewsData2);
       await Future.delayed(Duration.zero);
-      cache.writeQuery(
+      await cache.writeQuery(
           reviewsReq,
           GReviewsData((b) => b
             ..reviews.addAll([
@@ -208,7 +208,7 @@ void main() {
 
     test('clearing cache emits only one update', () async {
       final cache = Cache();
-      cache.writeQuery(reviewsReq, reviewsData2);
+      await cache.writeQuery(reviewsReq, reviewsData2);
 
       expect(
         cache.watchQuery(reviewsReq).toList(),

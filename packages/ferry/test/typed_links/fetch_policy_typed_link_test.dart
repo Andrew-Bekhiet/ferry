@@ -1,16 +1,16 @@
 import 'dart:async';
-import 'package:async/async.dart';
-import 'package:mockito/mockito.dart';
-import 'package:mockito/annotations.dart';
-import 'package:gql_link/gql_link.dart';
-import 'package:gql_exec/gql_exec.dart';
-import 'package:test/test.dart';
-import 'package:rxdart/rxdart.dart';
 
-import 'package:ferry_exec/ferry_exec.dart';
+import 'package:async/async.dart';
 import 'package:ferry/src/fetch_policy_typed_link.dart';
-import 'package:ferry_test_graphql/queries/__generated__/human_with_args.req.gql.dart';
+import 'package:ferry_exec/ferry_exec.dart';
 import 'package:ferry_test_graphql/queries/__generated__/human_with_args.data.gql.dart';
+import 'package:ferry_test_graphql/queries/__generated__/human_with_args.req.gql.dart';
+import 'package:gql_exec/gql_exec.dart';
+import 'package:gql_link/gql_link.dart';
+import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
+import 'package:rxdart/rxdart.dart';
+import 'package:test/test.dart';
 
 import './fetch_policy_typed_link_test.mocks.dart';
 
@@ -202,7 +202,7 @@ void main() {
         expect(first.data, equals(null));
 
         /// Request returns data after writing to cache
-        cache.writeQuery(req, data);
+        await cache.writeQuery(req, data);
         requestController.add(req);
         final response = await queue.next;
         expect(response.dataSource, equals(DataSource.Cache));

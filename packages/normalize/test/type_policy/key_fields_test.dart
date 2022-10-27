@@ -1,7 +1,7 @@
-import 'package:test/test.dart';
 import 'package:gql/language.dart';
-
 import 'package:normalize/normalize.dart';
+import 'package:test/test.dart';
+
 import '../shared_data.dart';
 
 void main() {
@@ -73,11 +73,11 @@ void main() {
         )
       };
 
-      test('Produces correct normalized object', () {
+      test('Produces correct normalized object', () async {
         final normalizedResult = {};
-        normalizeOperation(
-          read: (dataId) => normalizedResult[dataId],
-          write: (dataId, value) => normalizedResult[dataId] = value,
+        await normalizeOperation(
+          read: (dataId) async => normalizedResult[dataId],
+          write: (dataId, value) async => normalizedResult[dataId] = value,
           document: query,
           data: sharedResponse,
           typePolicies: typePolicies,
@@ -89,14 +89,14 @@ void main() {
         );
       });
 
-      test('Produces correct nested data object', () {
-        expect(
+      test('Produces correct nested data object', () async {
+        await expectLater(
           denormalizeOperation(
             document: query,
-            read: (dataId) => normalizedMap[dataId],
+            read: (dataId) async => normalizedMap[dataId],
             typePolicies: typePolicies,
           ),
-          equals(sharedResponse),
+          completion(equals(sharedResponse)),
         );
       });
     });
@@ -141,11 +141,11 @@ void main() {
         )
       };
 
-      test('Produces correct normalized object', () {
+      test('Produces correct normalized object', () async {
         final normalizedResult = {};
-        normalizeOperation(
-          read: (dataId) => normalizedResult[dataId],
-          write: (dataId, value) => normalizedResult[dataId] = value,
+        await normalizeOperation(
+          read: (dataId) async => normalizedResult[dataId],
+          write: (dataId, value) async => normalizedResult[dataId] = value,
           document: query,
           data: sharedResponse,
           typePolicies: typePolicies,
@@ -157,14 +157,14 @@ void main() {
         );
       });
 
-      test('Produces correct nested data object', () {
-        expect(
+      test('Produces correct nested data object', () async {
+        await expectLater(
           denormalizeOperation(
             document: query,
-            read: (dataId) => normalizedMap[dataId],
+            read: (dataId) async => normalizedMap[dataId],
             typePolicies: typePolicies,
           ),
-          equals(sharedResponse),
+          completion((equals(sharedResponse))),
         );
       });
     });
@@ -206,11 +206,11 @@ void main() {
         )
       };
 
-      test('Produces correct normalized object', () {
+      test('Produces correct normalized object', () async {
         final normalizedResult = {};
-        normalizeOperation(
-          read: (dataId) => normalizedResult[dataId],
-          write: (dataId, value) => normalizedResult[dataId] = value,
+        await normalizeOperation(
+          read: (dataId) async => normalizedResult[dataId],
+          write: (dataId, value) async => normalizedResult[dataId] = value,
           document: query,
           data: sharedResponse,
           typePolicies: typePolicies,
@@ -222,14 +222,14 @@ void main() {
         );
       });
 
-      test('Produces correct nested data object', () {
-        expect(
+      test('Produces correct nested data object', () async {
+        await expectLater(
           denormalizeOperation(
             document: query,
-            read: (dataId) => normalizedMap[dataId],
+            read: (dataId) async => normalizedMap[dataId],
             typePolicies: typePolicies,
           ),
-          equals(sharedResponse),
+          completion(equals(sharedResponse)),
         );
       });
     });
@@ -265,11 +265,11 @@ void main() {
         )
       };
 
-      test('Produces correct normalized object', () {
+      test('Produces correct normalized object', () async {
         final normalizedResult = {};
-        normalizeOperation(
-          read: (dataId) => normalizedResult[dataId],
-          write: (dataId, value) => normalizedResult[dataId] = value,
+        await normalizeOperation(
+          read: (dataId) async => normalizedResult[dataId],
+          write: (dataId, value) async => normalizedResult[dataId] = value,
           document: query,
           data: sharedResponse,
           typePolicies: typePolicies,
@@ -281,14 +281,14 @@ void main() {
         );
       });
 
-      test('Produces correct nested data object', () {
-        expect(
+      test('Produces correct nested data object', () async {
+        await expectLater(
           denormalizeOperation(
             document: query,
-            read: (dataId) => normalizedMap[dataId],
+            read: (dataId) async => normalizedMap[dataId],
             typePolicies: typePolicies,
           ),
-          equals(sharedResponse),
+          completion(equals(sharedResponse)),
         );
       });
     });

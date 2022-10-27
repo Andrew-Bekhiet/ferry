@@ -1,32 +1,45 @@
 import 'package:gql/ast.dart';
-
-import 'package:normalize/src/utils/field_key.dart';
-import 'package:normalize/src/utils/expand_fragments.dart';
-import 'package:normalize/src/utils/exceptions.dart';
 import 'package:normalize/src/config/normalization_config.dart';
-import 'package:normalize/src/utils/is_dangling_reference.dart';
 import 'package:normalize/src/policies/field_policy.dart';
+import 'package:normalize/src/utils/exceptions.dart';
+import 'package:normalize/src/utils/expand_fragments.dart';
+import 'package:normalize/src/utils/field_key.dart';
+import 'package:normalize/src/utils/is_dangling_reference.dart';
 
 /// Returns a denormalized object for a given [SelectionSetNode].
 ///
 /// This is called recursively as the AST is traversed.
-Object? denormalizeNode({
+Future<Object?> denormalizeNode({
   required SelectionSetNode? selectionSet,
   required Object? dataForNode,
   required NormalizationConfig config,
-}) {
+}) async {
   if (dataForNode == null) return null;
 
   if (dataForNode is List) {
-    return dataForNode
-        .where((data) => !isDanglingReference(data, config))
-        .map(
-          (data) => denormalizeNode(
-            selectionSet: selectionSet,
-            dataForNode: data,
-            config: config,
-          ),
-        )
+    // A unique object to flag removed items
+    //
+    // since we cannot filter the list asynchronously,
+    // we return this object for each excluded item
+    // then filter on it later after awaiting all the futures using [Future.wait]
+    final excludedFlag = Object();
+
+    return (await Future.wait(
+      dataForNode.map(
+        (data) async {
+          if (!await isDanglingReference(data, config)) {
+            return denormalizeNode(
+              selectionSet: selectionSet,
+              dataForNode: data,
+              config: config,
+            );
+          }
+
+          return excludedFlag;
+        },
+      ),
+    ))
+        .where((o) => !identical(o, excludedFlag))
         .toList();
   }
 
@@ -35,7 +48,7 @@ Object? denormalizeNode({
 
   if (dataForNode is Map) {
     final denormalizedData = dataForNode.containsKey(config.referenceKey)
-        ? config.read(dataForNode[config.referenceKey]) ?? {}
+        ? await config.read(dataForNode[config.referenceKey]) ?? {}
         : Map<String, dynamic>.from(dataForNode);
 
     final typename = denormalizedData['__typename'];
@@ -48,7 +61,7 @@ Object? denormalizeNode({
       possibleTypes: config.possibleTypes,
     );
 
-    final result = subNodes.fold<Map<String, dynamic>>(
+    final resultFutures = subNodes.fold<Map<String, dynamic>>(
       {},
       (result, fieldNode) {
         final fieldPolicy =
@@ -74,28 +87,45 @@ Object? denormalizeNode({
         }
 
         try {
-          if (policyCanRead) {
-            // we can denormalize missing fields with policies
-            // because they may be purely virtualized
-            return result
-              ..[resultKey] = fieldPolicy!.read!(
-                denormalizedData[fieldName],
-                FieldFunctionOptions(
-                  field: fieldNode,
-                  config: config,
-                ),
-              );
-          }
           return result
-            ..[resultKey] = denormalizeNode(
-              selectionSet: fieldNode.selectionSet,
-              dataForNode: denormalizedData[fieldName],
-              config: config,
+            ..[resultKey] = Future(
+              () async {
+                if (policyCanRead) {
+                  // we can denormalize missing fields with policies
+                  // because they may be purely virtualized
+                  return await fieldPolicy!.read!(
+                    denormalizedData[fieldName],
+                    FieldFunctionOptions(
+                      field: fieldNode,
+                      config: config,
+                    ),
+                  );
+                }
+                return denormalizeNode(
+                  selectionSet: fieldNode.selectionSet,
+                  dataForNode: denormalizedData[fieldName],
+                  config: config,
+                );
+              },
+            ).onError<PartialDataException>(
+              (e, _) => throw PartialDataException(
+                path: [fieldName, ...e.path],
+              ),
             );
         } on PartialDataException catch (e) {
           throw PartialDataException(path: [fieldName, ...e.path]);
         }
       },
+    );
+
+    // Reconstruct the data again in the same order
+    // after awaiting all pending futures
+    final result = Map.fromEntries(
+      await Future.wait(
+        resultFutures.entries.map(
+          (e) async => MapEntry(e.key, await e.value),
+        ),
+      ),
     );
 
     return result.isEmpty ? null : result;
